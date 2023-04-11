@@ -1,4 +1,5 @@
 import pool from "./config/db.js";
+import bcrypt from "bcryptjs";
 import {
 	QverifyAPI_KEY,
 	QcreateUser,
@@ -37,7 +38,7 @@ class Auth {
 	}
 
 	async createUser(user) {
-		await this.#userAction(user, QcreateUser);
+		return await this.#userAction(user, QcreateUser, "CREATE_USER");
 	}
 
 	/**
@@ -46,13 +47,12 @@ class Auth {
 	 * If the user is found, the method returns the user data.
 	 */
 	async verifyUser(user) {
-		const userData = await this.#userAction(user, QverifyUser);
-		console.log(userData);
+		const userData = await this.#userAction(user, QverifyUser, "VERIFY_USER");
 		return userData;
 	}
 
 	async deleteUser(user) {
-		await this.#userAction(user, QdeleteUser);
+		return await this.#userAction(user, QdeleteUser, "DELETE_USER");
 	}
 
 	/**
@@ -60,8 +60,16 @@ class Auth {
 	 * and deleteUser methods. It checks the user's credentials, retrieves the API key's ID,
 	 * and executes the appropriate query.
 	 */
-	async #userAction(user, queryString) {
+	async #userAction(user, queryString, action) {
 		this.#checkUserCredentials(user);
+
+		if (action === "CREATE_USER") {
+			user.password = await bcrypt.hash(user.password, 8);
+		}
+		if (action === "DELETE_USER") {
+			const response = await this.verifyUser(user);
+			if (response.status === "fail") return response;
+		}
 
 		this.#email = user.email;
 		this.#username = user.username;
@@ -70,14 +78,39 @@ class Auth {
 		try {
 			const id = await this.#validAPI_KEYid();
 			if (!id) throw new Error("API KEY Invalid");
-			const userToCreate = {
+			const user = {
 				username: this.#username,
 				password: this.#password,
 				email: this.#email,
 				apiKey_id: id,
 			};
-			const response = await pool.query(queryString(userToCreate));
-			return response.rows[0];
+			const response = await pool.query(queryString(user));
+			if (action === "VERIFY_USER") {
+				if (response.rows.length === 0)
+					return {
+						status: "fail",
+						message: "Account does'nt exist",
+					};
+				if (await bcrypt.compare(user.password, response.rows[0].password)) {
+					const { email, username } = response.rows[0];
+					return {
+						status: "success",
+						message: {
+							email,
+							username,
+						},
+					};
+				}
+				return {
+					status: "fail",
+					message: "Password dosent match",
+				};
+			}
+			return {
+				status: "success",
+				message:
+					"account " + (action === "CREATE_USER" ? "created" : "deleted"),
+			};
 		} catch (e) {
 			throw new Error(`Failed to take action on user: ${e.message}`);
 		}
@@ -121,4 +154,4 @@ class Auth {
 export default Auth;
 
 const user = new Auth("secret");
-user.deleteUser({ password: "1234", username: "man", email: "man" });
+console.log(await user.createUser({ password: "1234", username: "sup" }));

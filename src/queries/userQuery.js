@@ -16,17 +16,15 @@ const QcreateUser = (user) => {
 };
 
 const QverifyUser = (user) => {
-	return `SELECT id, email, username FROM devClients WHERE apiKey_id = ${
+	return `SELECT id, email, username, password FROM devClients WHERE apiKey_id = ${
 		user.apiKey_id
-	} AND password = '${user.password}' AND ${
+	} AND ${
 		user.email ? `email = '${user.email}'` : `username = '${user.username}'`
 	}`;
 };
 
 const QdeleteUser = (user) => {
-	return `DELETE FROM devClients WHERE apiKey_id = ${
-		user.apiKey_id
-	} AND password = '${user.password}' AND ${
+	return `DELETE FROM devClients WHERE apiKey_id = ${user.apiKey_id} AND ${
 		user.email ? `email = '${user.email}'` : `username = '${user.username}'`
 	}`;
 };

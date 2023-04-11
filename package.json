@@ -22,6 +22,7 @@
 	},
 	"homepage": "https://github.com/adarsh-shahi/authify#readme",
 	"dependencies": {
+		"bcryptjs": "^2.4.3",
 		"dotenv": "^16.0.3",
 		"pg": "^8.10.0"
 	}
